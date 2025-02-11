@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>タイプスロットマシン</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+        }
+        #slot-machine {
+            width: 300px;
+            height: 100px;
+            border: 5px solid #333;
+            margin: 0 auto;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .slot {
+            width: 100px;
+            height: 100px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0 10px;
+            background-color: #f39c12;
+            color: white;
+            border: 2px solid #333;
+        }
+        #result {
+            font-size: 24px;
+            margin-top: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin-top: 20px;
+        }
+        .spin {
+            animation: spin 0.1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: translateY(0); }
+            to { transform: translateY(-100%); }
+        }
+    </style>
+</head>
+<body>
+    <h1>タイプスロットマシン</h1>
+    <div id="slot-machine">
+        <div class="slot" id="slot1">？</div>
+        <div class="slot" id="slot2">？</div>
+    </div>
+    <button id="spin-button" onclick="startSpin()">スロットを回す</button>
+    <button id="stop-button" onclick="stopSpin()" disabled>スロットを止める</button>
+    <div id="result"></div>
+
+    <audio id="spin-sound" src="spin-sound.mp3"></audio>
+    <audio id="stop-sound" src="stop-sound.mp3"></audio>
+    <audio id="slow-sound" src="slow-sound.mp3"></audio>
+    <audio id="left-slow-sound" src="left-slow-sound.mp3"></audio>
+    <audio id="right-stop-sound" src="right-stop-sound.mp3"></audio>
+
+    <script>
+        const combinations = [
+            "ノーマル", "ほのお", "みず", "でんき", "くさ",
+            "こおり", "かくとう", "どく", "じめん", "ひこう",
+            "エスパー", "むし", "いわ", "ゴースト", "ドラゴン",
+            "あく", "はがね", "フェアリー", "単タイプ"
+        ];
+        let results = [];
+        let spins = 0;
+        let spinning = false;
+        let interval1, interval2;
+        let slowDownInterval1, slowDownInterval2;
+
+        function startSpin() {
+            if (spins >= 5) {
+                alert("スロットは5回までしか回せません。");
+                return;
+            }
+
+            const slot1 = document.getElementById("slot1");
+            const slot2 = document.getElementById("slot2");
+
+            // スピン音を再生
+            stopAllSounds();
+            document.getElementById("spin-sound").play();
+
+            spinning = true;
+            interval1 = setInterval(() => {
+                slot1.textContent = combinations[Math.floor(Math.random() * combinations.length)];
+            }, 100);
+
+            interval2 = setInterval(() => {
+                slot2.textContent = combinations[Math.floor(Math.random() * combinations.length)];
+            }, 100);
+
+            document.getElementById("spin-button").disabled = true;
+            document.getElementById("stop-button").disabled = false;
+        }
+
+        function stopSpin() {
+            if (!spinning) return;
+
+            const slot1 = document.getElementById("slot1");
+            const slot2 = document.getElementById("slot2");
+
+            clearInterval(interval1);
+
+            // スピン音を停止し、ストップ音を再生
+            stopAllSounds();
+            document.getElementById("stop-sound").play();
+
+            let delay1 = 100;
+            let maxDelay1 = 1500; // スロー時間を延長
+            slowDownInterval1 = setInterval(() => {
+                slot1.textContent = combinations[Math.floor(Math.random() * combinations.length)];
+                delay1 += 100;
+                if (delay1 >= maxDelay1) {
+                    clearInterval(slowDownInterval1);
+
+                    const result1 = slot1.textContent;
+
+                    // 左スロット停止音を再生
+                    stopAllSounds();
+                    document.getElementById("left-slow-sound").play();
+
+                    setTimeout(() => {
+                        // スロー音を再生
+                        stopAllSounds();
+                        document.getElementById("slow-sound").play();
+
+                        clearInterval(interval2);
+
+                        let delay2 = 100;
+                        let maxDelay2 = 1500; // スロー時間を延長
+                        slowDownInterval2 = setInterval(() => {
+                            slot2.textContent = combinations[Math.floor(Math.random() * combinations.length)];
+                            delay2 += 100;
+                            if (delay2 >= maxDelay2) {
+                                clearInterval(slowDownInterval2);
+
+                                const result2 = slot2.textContent;
+
+                                // 右スロット停止音を再生
+                                stopAllSounds();
+                                document.getElementById("right-stop-sound").play();
+
+                                results.push(`${result1}/${result2}`);
+                                if (results.length > 5) {
+                                    results.shift(); // 最初の結果を削除して5つに保つ
+                                }
+                                let resultText = "";
+                                results.forEach((res, index) => {
+                                    resultText += `${index + 1}体目: ${res}<br>`;
+                                });
+                                document.getElementById("result").innerHTML = resultText;
+
+                                spins++;
+                                spinning = false;
+                                document.getElementById("spin-button").disabled = false;
+                                document.getElementById("stop-button").disabled = true;
+                            }
+                        }, delay2);
+                    }, 500); // 左のスロットが止まってから右のスロットがスローになるまでの遅延
+                }
+            }, delay1);
+        }
+
+        function stopAllSounds() {
+            document.getElementById("spin-sound").pause();
+            document.getElementById("spin-sound").currentTime = 0;
+            document.getElementById("stop-sound").pause();
+            document.getElementById("stop-sound").currentTime = 0;
+            document.getElementById("slow-sound").pause();
+            document.getElementById("slow-sound").currentTime = 0;
+            document.getElementById("left-slow-sound").pause();
+            document.getElementById("left-slow-sound").currentTime = 0;
+            document.getElementById("right-stop-sound").pause();
+            document.getElementById("right-stop-sound").currentTime = 0;
+        }
+    </script>
+</body>
+</html>
